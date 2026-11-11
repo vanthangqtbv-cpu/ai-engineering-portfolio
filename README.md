@@ -16,16 +16,26 @@ Welcome to my **Applied AI & Deep Learning Engineering Portfolio**. This reposit
 | :-: | :--- | :--- | :--- | :--- | :-: |
 | **01** | [**Hotel Booking Cancellation Prediction**](./01-hotel-booking-cancellation-ml/) | Tabular ML & Deep Neural Networks (MLP) | `Python`, `Pandas`, `Scikit-Learn`, `TensorFlow/Keras` | **`86.25%` Accuracy (`0.9333` ROC-AUC)** across `119,210` bookings; full data-leakage & anomaly audit | ✅ Completed |
 | **02** | [**CNN Handwritten Digit Recognition & Error Analysis**](./02-cnn-mnist-digit-recognition/) | Computer Vision (CNN) | `TensorFlow/Keras`, `Conv2D`, `MaxPooling2D`, `Seaborn` | **`99.19%` Test Accuracy** (`9,919/10,000` unseen samples); idempotent pipeline & error diagnostics | ✅ Completed |
-| **03** | **Modern CNN & Transfer Learning (`ResNet` / `MobileNet`)** | Computer Vision & Edge AI | `Transfer Learning`, `Data Augmentation`, `YOLO` | Real-world image classification & object detection for mobile inspection | 🔄 In Progress |
-| **04** | **Transformer Fine-Tuning & Semantic Search** | NLP | `HuggingFace`, `BERT`, `Embeddings` | Domain-specific text classification, NER & semantic retrieval | 📅 Upcoming |
-| **05** | **Enterprise RAG Chatbot & Document Intelligence** | GenAI / LLMs | `LangChain`, `Vector DB`, `OpenAI / Gemini` | Grounded Q&A over enterprise PDFs with hallucination guardrails | 📅 Upcoming |
-| **06** | **Autonomous Multi-Agent B2B Workflow Engine** | Agentic AI | `Multi-Agent`, `MCP`, `FastAPI`, `Playwright` | Automated B2B lead intelligence, document extraction & quotation generation | 📅 Upcoming |
+| **03** | [**Modern CNN: Mini-ResNet with Skip Connections (`CIFAR-10`)**](./03-modern-cnn-resnet-cifar10/) | Deep CV Architectures | `Keras Functional API`, `Add (Skip Connection)`, `BatchNormalization`, `GlobalAveragePooling2D` | **`45,450` Lightweight Params** (`90%` reduction vs. `Flatten`); residual identity & $1\times 1$ projection blocks on RGB images | ✅ Completed |
+| **04** | **Transfer Learning & Real-Time Object Detection (`MobileNet` / `YOLO`)** | Computer Vision & Edge AI | `Transfer Learning`, `Data Augmentation`, `YOLO` | Real-world image classification & object detection for mobile inspection | 🔄 In Progress |
+| **05** | **Transformer Fine-Tuning & Semantic Search** | NLP | `HuggingFace`, `BERT`, `Embeddings` | Domain-specific text classification, NER & semantic retrieval | 📅 Upcoming |
+| **06** | **Enterprise RAG Chatbot & Document Intelligence** | GenAI / LLMs | `LangChain`, `Vector DB`, `OpenAI / Gemini` | Grounded Q&A over enterprise PDFs with hallucination guardrails | 📅 Upcoming |
+| **07** | **Autonomous Multi-Agent B2B Workflow Engine** | Agentic AI | `Multi-Agent`, `MCP`, `FastAPI`, `Playwright` | Automated B2B lead intelligence, document extraction & quotation generation | 📅 Upcoming |
 
 ---
 
 ## 🔬 Visual Highlights
 
-### 1. Computer Vision: CNN Feature Extraction & Error Diagnostics ([`02-cnn-mnist-digit-recognition`](./02-cnn-mnist-digit-recognition/))
+### 1. Modern CNN: Mini-ResNet with Residual Skip Connections ([`03-modern-cnn-resnet-cifar10`](./03-modern-cnn-resnet-cifar10/))
+* Designed a custom **Mini-ResNet** using the Keras Functional API (`Conv2D` + `BatchNormalization` + `Add()` Identity & $1\times 1$ Projection Skip Connections + `GlobalAveragePooling2D`), reducing parameter count to just **`45,450` (`177.54 KB`)** on 3-channel RGB `CIFAR-10` images.
+
+| Mini-ResNet Learning Curves (`EarlyStopping`) | Unseen RGB Test Predictions (`2x5` Grid) |
+| :---: | :---: |
+| ![ResNet Learning Curves](./03-modern-cnn-resnet-cifar10/assets/resnet_learning_curves.png) | ![ResNet Predictions](./03-modern-cnn-resnet-cifar10/assets/resnet_test_predictions.png) |
+
+---
+
+### 2. Computer Vision: CNN Feature Extraction & Error Diagnostics ([`02-cnn-mnist-digit-recognition`](./02-cnn-mnist-digit-recognition/))
 * Built a 421K-parameter Convolutional Neural Network (`Conv2D` $\rightarrow$ `MaxPooling2D` $\rightarrow$ `Dropout(0.5)` $\rightarrow$ `Softmax`) achieving **99.19% test accuracy** in 10 epochs.
 
 | Training & Validation Curves | Confusion Matrix (`10,000` Unseen Test Images) |
@@ -34,7 +44,7 @@ Welcome to my **Applied AI & Deep Learning Engineering Portfolio**. This reposit
 
 ---
 
-### 2. Tabular ML vs. Deep Learning Benchmark ([`01-hotel-booking-cancellation-ml`](./01-hotel-booking-cancellation-ml/))
+### 3. Tabular ML vs. Deep Learning Benchmark ([`01-hotel-booking-cancellation-ml`](./01-hotel-booking-cancellation-ml/))
 * Benchmarked **Logistic Regression**, **Random Forest**, and **12 Multi-Layer Perceptron (MLP)** architectures across `119,210` cleaned hotel reservations after eliminating target leakage (`reservation_status`) and domain anomalies (`total_nights == 0`, room type mismatches).
 
 | MLP Optimizer & Learning Rate Search | Final Benchmark (LogReg vs. Random Forest vs. Best MLP) |
