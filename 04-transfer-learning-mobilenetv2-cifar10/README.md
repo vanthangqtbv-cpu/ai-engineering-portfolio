@@ -1,91 +1,79 @@
-# 🔄 Transfer Learning & Data Augmentation with MobileNetV2 on CIFAR-10
+# 🔄 Transfer Learning, Fine-Tuning & Deep Error Analysis with MobileNetV2 on CIFAR-10
 
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
-[![Architecture](https://img.shields.io/badge/Backbone-MobileNetV2_(ImageNet)-0A66C2)](./transfer_learning_mobilenetv2_cifar10.ipynb)
-[![Test Accuracy](https://img.shields.io/badge/Test_Accuracy-76.50%25_(%2B31.10%25_vs_Scratch)-2ea44f)](./transfer_learning_mobilenetv2_cifar10.ipynb)
-[![Trainable Params](https://img.shields.io/badge/Trainable_Params-12%2C810_(50.04_KB)-purple)](./transfer_learning_mobilenetv2_cifar10.ipynb)
+[![Architecture](https://img.shields.io/badge/Backbone-MobileNetV2_(ImageNet)-0A66C2)](./cv_error_analysis_and_finetuning.ipynb)
+[![Test Accuracy](https://img.shields.io/badge/Fine--Tuned_Test_Acc-82.40%25_(%2B37.00%25_vs_Scratch)-2ea44f)](./cv_error_analysis_and_finetuning.ipynb)
+[![Error Audit](https://img.shields.io/badge/Evaluation-Confusion_Matrix_%26_Error_Analysis-purple)](./cv_error_analysis_and_finetuning.ipynb)
 
 ## 📌 Executive Summary
-Training deep Convolutional Neural Networks from scratch on small datasets often leads to severe overfitting or slow convergence. In [**Project 03 (`Mini-ResNet`)**](../03-modern-cnn-resnet-cifar10/), training a residual network from scratch on a subset of `CIFAR-10` achieved **`45.40%` test accuracy** while requiring `45,130` trainable parameters.
-
-In this project, we apply **Transfer Learning** using a pre-trained **`MobileNetV2`** backbone (trained on **1.4 million ImageNet images**) combined with an in-graph **Data Augmentation** pipeline (`RandomFlip`, `RandomRotation`, `RandomZoom`). By freezing the `2.25M`-parameter convolutional base and training only a lightweight **`12,810`-parameter classification head** for 6 epochs on just `4,000` training images, we boost unseen test accuracy from **`45.40%` to `76.50%` (+31.10% absolute improvement)** in ~22 seconds on CPU.
-
----
-
-## 🏗️ End-to-End Functional API Architecture
-
-To prevent data-leakage and double-normalization bugs, both spatial upsampling (`32x32` $\rightarrow$ `96x96`) and `MobileNetV2` pixel scaling (`[0, 255]` $\rightarrow$ `[-1, 1]`) are encapsulated directly inside the Keras Functional API graph:
-
-```text
-Input Layer: (32, 32, 3) Raw RGB [0..255]
-   │
-   ▼
-Data Augmentation (Active only during training):
-   ├── RandomFlip("horizontal")
-   ├── RandomRotation(0.1)
-   └── RandomZoom(0.1)
-   │
-   ▼
-Spatial Upsampling: Resizing(96, 96)
-   │
-   ▼
-Backbone Normalization: mobilenet_v2.preprocess_input (scales [0..255] -> [-1..1])
-   │
-   ▼
-Frozen Pre-trained Backbone: MobileNetV2 (include_top=False, weights="imagenet", trainable=False)
-   │  Output Feature Maps: (None, 3, 3, 1280) — 2,257,984 Non-Trainable Params
-   ▼
-Custom Classification Head (12,810 Trainable Params):
-   ├── GlobalAveragePooling2D() -> (None, 1280)
-   ├── Dropout(0.3)
-   └── Dense(10, activation="softmax")
-```
-
-### Parameter Breakdown
-| Component | Parameters | Memory Footprint | Status |
-| :--- | :---: | :---: | :---: |
-| **`MobileNetV2` Backbone (`ImageNet`)** | `2,257,984` | `8.61 MB` | ❄️ **Frozen (`trainable=False`)** |
-| **Custom Head (`GAP` + `Dropout(0.3)` + `Dense(10)`)** | **`12,810`** | **`50.04 KB`** | 🔥 **Trainable** |
-| **Total Model** | `2,270,794` | `8.66 MB` | ✅ Ready for Edge / TFLite Export |
+Training deep Convolutional Neural Networks from scratch on small datasets often leads to severe overfitting or slow convergence. Across a 3-stage experimental progression on `CIFAR-10`:
+1. **Stage 1 — Scratch `Mini-ResNet` ([Project 03](../03-modern-cnn-resnet-cifar10/)):** Training from random initialization achieved **`45.40%` test accuracy**.
+2. **Stage 2 — Frozen `MobileNetV2` Feature Extraction ([`transfer_learning_mobilenetv2_cifar10.ipynb`](./transfer_learning_mobilenetv2_cifar10.ipynb)):** Freezing 100% of the ImageNet-pretrained `MobileNetV2` backbone and training only a `12,810`-parameter classification head with in-graph Data Augmentation boosted unseen test accuracy to **`76.50%` (+31.10%)** in 22 seconds on CPU.
+3. **Stage 3 — `MobileNetV2` Fine-Tuning & Error Auditing ([`cv_error_analysis_and_finetuning.ipynb`](./cv_error_analysis_and_finetuning.ipynb)):** Unfreezing the **top 20 convolutional layers** of `MobileNetV2` with a conservative learning rate (`Adam(learning_rate=1e-4)`) pushed validation accuracy to **`84.50%`** and unseen test accuracy to **`82.40%` (+37.00% over scratch CNN)**, followed by a rigorous per-class **Precision/Recall/F1-Score audit**, **Confusion Matrix heatmap**, and **Top 10 High-Confidence Error inspection**.
 
 ---
 
-## 📊 Visual Results & Benchmark Comparison
+## 📊 Stage-by-Stage Benchmark Comparison
 
-### 1. Real-Time Data Augmentation (`RandomFlip`, `RandomRotation`, `RandomZoom`)
-Generating synthetic spatial variations on-the-fly forces the classification head to learn invariant object representations rather than memorizing pixel coordinates:
+| Metric | Stage 1: Scratch `Mini-ResNet` | Stage 2: Frozen `MobileNetV2` | Stage 3: Fine-Tuned `MobileNetV2` (Top 20 Layers) | Engineering Impact |
+| :--- | :---: | :---: | :---: | :--- |
+| **Training Dataset Size** | `8,000` images | `4,000` images | **`4,000` images** | **50% less training data required** |
+| **Trainable Parameters** | `45,130` | `12,810` | **`1,218,890`** | Unfroze top 20 high-level semantic layers |
+| **Optimizer & Learning Rate** | `Adam(1e-3)` | `Adam(1e-3)` | **`Adam(1e-4)`** | 10x smaller step prevents catastrophic forgetting |
+| **Peak Validation Accuracy** | `47.50%` | `76.25%` | **`84.50%`** | Smooth convergence with `EarlyStopping` |
+| **Unseen Test Accuracy (`1,000` imgs)** | `45.40%` | `76.50%` | **`82.40%`** | **🚀 `+37.00%` total accuracy gain** |
 
-![Data Augmentation Preview](./assets/data_augmentation_preview.png)
+---
 
-### 2. Learning Curves (6 Epochs on CPU)
-Because `MobileNetV2` already extracts rich hierarchical visual features (edges, textures, object parts), validation accuracy reaches **`69.00%` in Epoch 1** and climbs smoothly to **`76.25%` by Epoch 6** without overfitting (`Dropout(0.3)` + `Data Augmentation` keep training loss higher than validation loss):
+## 🔬 Deep Error Analysis & Model Diagnostics (Stage 3)
 
-![MobileNetV2 Learning Curves](./assets/mobilenetv2_learning_curves.png)
+### 1. Per-Class Precision, Recall & F1-Score Audit (`classification_report`)
+| Class | Precision | Recall | F1-Score | Support | Diagnostic Insight |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Automobile (`O to`)** | `0.8776` | **`0.9663`** | **`0.9198`** | `89` | Highest recall (`96.63%`); distinct wheel/chassis geometry |
+| **Truck (`Xe tai`)** | **`0.9174`** | `0.9174` | **`0.9174`** | `109` | Highest precision (`91.74%`); minimal false positives |
+| **Ship (`Tau Thuy`)** | `0.8347` | `0.9528` | `0.8899` | `106` | Strong maritime background recognition |
+| **Frog (`Ech`)** | `0.8031` | `0.9107` | `0.8536` | `112` | High recall; occasional confusion with crouched cats |
+| **Horse (`Ngua`)** | `0.7458` | `0.8627` | `0.8000` | `102` | Absorbs false positives from hornless deer |
+| **Deer (`Huou`)** | `0.8889` | `0.7111` | `0.7901` | `90` | High precision when antlers are visible; `12` misclassified as horses |
+| **Airplane (`May bay`)** | `0.8280` | `0.7476` | `0.7857` | `103` | `14` seaplanes/sky-background planes confused with ships |
+| **Bird (`Chim`)** | `0.8919` | `0.6600` | `0.7586` | `100` | Gliding silhouettes against blue sky confused with airplanes |
+| **Dog (`Cho`)** | `0.6961` | `0.8256` | `0.7553` | `86` | Lowest precision (`69.61%`) due to `14` cats misclassified as dogs |
+| **Cat (`Meo`)** | `0.8023` | `0.6699` | `0.7302` | `103` | Hardest class at `32x32` resolution (`14` confused with dogs, `8` with frogs) |
 
-### 3. Unseen Test Set Predictions (`9/10` Correct on Sample Strip)
-Evaluating on `1,000` unseen test images achieves **`76.50%` Test Accuracy**, correctly classifying **`9 out of 10`** sample test images (`Cat`, `Ship`, `Airplane`, `Frog`, `Automobile`):
+### 2. Confusion Matrix Heatmap (`10 x 10` Cross-Class Audit)
+The confusion matrix reveals the exact semantic clusters where visual ambiguity occurs at `32x32` resolution:
+* **`Cat` $\rightarrow$ `Dog` (`14` cases):** Fur texture and crouched indoor poses without visible pointed ears trigger dog predictions.
+* **`Airplane` $\rightarrow$ `Ship` (`14` cases):** Blue sky vs. blue ocean backgrounds and elongated white fuselages/hulls.
+* **`Deer` $\rightarrow$ `Horse` (`12` cases):** Side-profile quadrupeds on grass where antlers are cropped or indistinct.
 
-![MobileNetV2 Test Predictions](./assets/mobilenetv2_test_predictions.png)
+![Fine-Tuned Confusion Matrix](./assets/finetuned_confusion_matrix.png)
 
-### 4. Head-to-Head Benchmark: Scratch `Mini-ResNet` vs. `MobileNetV2` Transfer Learning
+### 3. Top 10 High-Confidence Errors (`97.1% - 99.7%` Confidence)
+Inspecting the top 10 errors sorted by predicted probability (`np.max(y_pred_probs, axis=1)`) demonstrates that the model's highest-confidence mistakes occur on visually ambiguous edge cases (e.g., a black bird gliding with straight wings predicted as `Airplane (99.7%)`, a vintage boxy car predicted as `Truck (99.7%)`, and a seaplane on water predicted as `Ship (97.6%)`):
 
-| Metric | Project 03: Scratch `Mini-ResNet` | Project 04: `MobileNetV2` Transfer Learning | Engineering Impact |
-| :--- | :---: | :---: | :--- |
-| **Training Dataset Size** | `8,000` RGB images | **`4,000` RGB images** | **50% less training data required** |
-| **Trainable Parameters** | `45,130` (`176.29 KB`) | **`12,810` (`50.04 KB`)** | **71.6% fewer trainable weights** |
-| **Training Time (CPU)** | ~36s (8 epochs) | **~22s (6 epochs, ~3.5s/epoch)** | **1.6x faster convergence** |
-| **Unseen Test Accuracy** | `45.40%` | **`76.50%`** | **🚀 `+31.10%` absolute accuracy jump** |
-| **Sample Strip Accuracy** | `4 / 10` (`40%`) | **`9 / 10` (`90%`)** | Robust feature generalization |
+![Top 10 High-Confidence Errors](./assets/finetuned_top10_errors.png)
+
+---
+
+## 📈 Stage 2 Visuals: Frozen Feature Extraction (`76.50%`)
+
+| Real-Time Data Augmentation | Stage 2 Learning Curves & Sample Strip (`9/10` Correct) |
+| :---: | :---: |
+| ![Data Augmentation Preview](./assets/data_augmentation_preview.png) | ![MobileNetV2 Learning Curves](./assets/mobilenetv2_learning_curves.png)<br>![MobileNetV2 Test Predictions](./assets/mobilenetv2_test_predictions.png) |
 
 ---
 
 ## 📂 Repository Structure
 ```text
 04-transfer-learning-mobilenetv2-cifar10/
-├── transfer_learning_mobilenetv2_cifar10.ipynb  # Full executed Jupyter Notebook
-├── README.md                                    # Engineering documentation & benchmark analysis
+├── cv_error_analysis_and_finetuning.ipynb       # Stage 3: Fine-Tuning (82.40%) + Confusion Matrix + Error Audit
+├── transfer_learning_mobilenetv2_cifar10.ipynb  # Stage 2: Frozen MobileNetV2 Feature Extraction (76.50%)
+├── README.md                                    # Engineering documentation & 3-stage benchmark analysis
 └── assets/
+    ├── finetuned_confusion_matrix.png           # 10x10 Confusion Matrix Heatmap (82.40% Test Acc)
+    ├── finetuned_top10_errors.png               # Top 10 High-Confidence Errors (97.1% - 99.7%)
     ├── data_augmentation_preview.png            # 1 original vs. 5 augmented training samples
-    ├── mobilenetv2_learning_curves.png          # 6-epoch Accuracy & Loss curves
+    ├── mobilenetv2_learning_curves.png          # Stage 2 Accuracy & Loss curves
     └── mobilenetv2_test_predictions.png         # 10 unseen test predictions (9/10 correct)
 ```
